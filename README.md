@@ -1,43 +1,81 @@
-# README #
-Put important information about this repository here! Use of markdown is highly
-recommended.
+# Dynamic Embedded Logger
 
-[Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+A C++ logging subsystem for resource-constrained, real-time embedded environments. This project focuses on eliminating if/else checks from execution paths by redirecting function pointers.
 
-## How to Build ##
-This project is configured with [CMake](https://cmake.org).
+---
 
-There are a few different configurations (build types) for building this code:
+## The Engineering Challenge
 
-``CMAKE_BUILD_TYPE``  | Description                                              | Compiler Flags
---------------------- | -------------------------------------------------------- | -----------------
-``Debug``             | For development                                          | ``-Wall -g -Og --coverage``
-``Release``           | Official build for end users                             | ``-Wall -O2``
-``RelWithDebInfo``    | Same as release, but includes debug symbols              | ``-Wall -O2 -g``
-``MinSizeRel``        | Same as release, but optimize for size rather than speed | ``-Wall -Os``
+In real-time embedded systems, main execution loops process high-frequency data thousands of times per second. Traditional dynamic logging relies on global boolean toggles:
 
-To generate a Makefile for your machine, you need only invoke ``cmake``. Here's a typical example:
+void high_frequency_loop() {
+    if (logging_enabled) {
+        std::cout << "Telemetry check..." << std::endl;
+    }
+}
 
-``cmake -DCMAKE_BUILD_TYPE=Debug -B build``
+Even when logging is disabled most of the time, the CPU must continuously check the logging_enabled flag. Over millions of iterations, this results in increased latency and higher power consumption.
 
-From here, you can use [GNU Make](https://www.gnu.org/software/make) to compile
-all target binaries. Here's an example using the above ``build`` directory:
+### The Solution: Function Pointer Swapping
 
-`` cd build && make ``
+Move the runtime decision-making outside the execution paths. By substituting a boolean flag with a mutable global function pointer (LogFunc), the system switches behaviors on the fly:
 
-## Unit Testing ##
-This project makes use of [Google Test](http://google.github.io/googletest) in
-order to self-test. By default, the testing binary is always built. This can be
-optionally disabled by setting the CMake variable ``DO_UT`` to ``OFF``. It is on
-by default.
+* Disabled State (Default): The pointer targets an empty NoOp_log function. The CPU hits an immediate return block, thus zero comparisons.
+* Enabled State: The pointer shifts to target the active_log function, executing the underlying I/O stream operations.
 
-``cmake -D CMAKE_BUILD_TYPE=Release -D DO_UT=OFF -B build_release``
+---
 
-If you are interested in checking the line coverage of the unit test suite, you
-can use [gcovr](https://github.com/gcovr/gcovr) to generate a concise report.
+## Architecture & Design
 
-For convenience, this has been made an optional Makefile target, ``check``. To
-generate this report, navigate to your build directory and run ``make check``.
+The project is structured around three clean layers:
 
-**Note that in order for the coverage report to generate properly, the build
-type must be ``Debug``!**
+1. The Contract (template.h): Defines the exact function footprint utilizing a custom type definition:
+   typedef void (*LogFunc)(const char* message);
+   extern LogFunc log_info;
+
+2. The Switchboard Logic (template.cpp): Implements the memory swap mechanics:
+   void enable_logging() { log_info = active_log; }
+   void disable_logging() { log_info = NoOp_log; }
+
+3. The Clean Execution Path (main.cpp): Executes straight-line function pointer invocations without pipeline-stalling conditional guards.
+
+---
+
+## Testing & Validation Framework
+
+This project utilizes Google Test (GTest) to enforce system stability and catch low-level memory degradation before firmware deployment.
+
+* Unit Testing (test/template_unittest.cpp): Implements automated I/O stream redirection. By capturing standard output buffers into isolated std::stringstream environments, the framework programmatically asserts the precise text alignment of active_log and confirms absolute silence from NoOp_log.
+* Integration Testing (test/template_test.cpp): Simulates real-world operational lifecycles under extreme conditions, including an intensive 1,000-cycle rapid pointer-swapping stress test to ensure immunity against memory leaks, stale buffers, or segmentation faults during fast runtime transitions.
+
+---
+
+## Building and Running
+
+The codebase uses a localized CMake build toolchain to isolate compilation artifacts.
+
+### Prerequisites
+* GCC Compiler (g++)
+* CMake (v3.10+)
+* Google Test Suite Framework (libgtest-dev)
+
+### Step-by-Step Compilation
+
+1. Navigate to the workspace build partition:
+   cd build
+
+2. Compile the targets via CMake:
+   cmake --build .
+
+3. Execute the primary application binary:
+   ./bin/template_bin
+
+4. Execute the automated Google Test Suite:
+   ./bin/template_unittest_bin
+
+---
+
+## Key Takeaways & Learned Skills
+* Low-Level Resource Optimization: Mastered how branch prediction failure and conditional evaluations impact hardware clock cycles.
+* Memory Lifecycle Management: Debugged pointer lifespans and object scopes to successfully eliminate segmentation faults.
+* Stream & Buffer Manipulation: Gained advanced insights into standard library stream buffers (rdbuf) to programmatically trap console outputs during automated verification.
