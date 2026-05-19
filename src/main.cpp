@@ -6,12 +6,7 @@
 
 void high_frequency_loop() {
     for (int i = 0; i < 3; ++i) {
-        // High-frequency task calls the global pointer
-        if (log_info != nullptr) { 
-            log_info("Telemetry check...");
-        } else {
-            std::cout << "[System Warning]: log_info is currently a null pointer!" << std::endl;
-        }
+        log_info("Telemetry check...");
     }
 }
 

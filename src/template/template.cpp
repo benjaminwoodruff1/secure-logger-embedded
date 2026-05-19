@@ -1,16 +1,19 @@
 #include "template.h"
 #include <iostream>
 
-// TODO: Define your active logging function here
-// TODO: Define your zero-overhead dummy function here
+void active_log(const char* message) {
+    std::cout << "[Log]: " << message << std::endl;
+}
 
-// Initialize the global function pointer to point to nothing for now
-LogFunc log_info = nullptr;
+void NoOp_log(const char* message) {
+}
+
+LogFunc log_info = NoOp_log;
 
 void enable_logging() {
-    // TODO: Make log_info point to your active logging function
+    log_info = active_log;
 }
 
 void disable_logging() {
-    // TODO: Make log_info point to your zero-overhead dummy function
+    log_info = NoOp_log;
 }
