@@ -8,12 +8,13 @@ A C++ logging subsystem for resource-constrained, real-time embedded environment
 
 In real-time embedded systems, main execution loops process high-frequency data thousands of times per second. Traditional dynamic logging relies on global boolean toggles:
 
+```cpp
 void high_frequency_loop() {
     if (logging_enabled) {
         std::cout << "Telemetry check..." << std::endl;
     }
 }
-
+```
 Even when logging is disabled most of the time, the CPU must continuously check the logging_enabled flag. Over millions of iterations, this results in increased latency and higher power consumption.
 
 ### The Solution: Function Pointer Swapping
@@ -30,12 +31,16 @@ Move the runtime decision-making outside the execution paths. By substituting a 
 The project is structured around three clean layers:
 
 1. The Contract (template.h): Defines the exact function footprint utilizing a custom type definition:
+```cpp
    typedef void (*LogFunc)(const char* message);
    extern LogFunc log_info;
+```
 
 2. The Switchboard Logic (template.cpp): Implements the memory swap mechanics:
+```cpp
    void enable_logging() { log_info = active_log; }
    void disable_logging() { log_info = NoOp_log; }
+```
 
 3. The Clean Execution Path (main.cpp): Executes straight-line function pointer invocations without pipeline-stalling conditional guards.
 
@@ -62,16 +67,23 @@ The codebase uses a localized CMake build toolchain to isolate compilation artif
 ### Step-by-Step Compilation
 
 1. Navigate to the workspace build partition:
+```bash
    cd build
-
+```
 2. Compile the targets via CMake:
+```bash
    cmake --build .
+```
 
 3. Execute the primary application binary:
+```bash
    ./bin/template_bin
+```
 
 4. Execute the automated Google Test Suite:
+```bash
    ./bin/template_unittest_bin
+```
 
 ---
 
