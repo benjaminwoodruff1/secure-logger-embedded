@@ -1,0 +1,110 @@
+# Example GitHub Actions YAML config file
+name: Run UT and Integration Testing
+
+on:
+  push:
+    # We run whenever a push is made to master (production) or dev (testing) branches
+    branches: [ "master", "dev" ]
+  pull_request:
+    # Only run tests when merging to production code
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    # By default, google test libraries aren't installed on the 'ubuntu-latest' image
+    # Luckily, they are distributed using apt. Install them as a prerequisite step
+    - name: Install Google Test
+      run: sudo apt-get update && sudo apt-get install -y libgtest-dev gcovr
+
+    # Generate platform-specific Makefile in subdirectory named 'build'
+    - name: CMake
+      run: cmake -D CMAKE_BUILD_TYPE=Debug -B build
+
+    # Compile main program
+    - name: Compile main program
+      working-directory: ./build
+      run: make
+
+    # Compile the program and its test binary. Make sure to change working directory to 'build'
+    - name: Compile UT binary
+      working-directory: ./build
+      run: make check
+
+    # Set up python3.13, so we can run robot framework
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    # All requirements for integration testing are installed
+    - name: Install integration testing dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r integration/requirements.txt
+
+    # Run integration tests. We continue on failure so that logs are uploaded if tests fail for debugging
+    - name: Run integration tests
+      run: |
+        robot -T --outputdir results integration/main.robot
+
+    - name: Upload artifact
+      if: '!cancelled()'
+      uses: actions/upload-artifact@v4
+      with:
+        path: ./results
+        name: integration-test-results
+        retention-days: 3
+
+  tag_master:
+    # Wait for the 'build' job to successfully complete
+    needs: build
+    # Only run this job if the event is a push (merge) directly to the master branch
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    # Grant the automatically generated GITHUB_TOKEN permission to push tags
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # fetch-depth: 0 is required to fetch all existing tags,
+          # otherwise the runner only fetches the single latest commit.
+          fetch-depth: 0
+
+      - name: Calculate and push tags
+        run: |
+          # Configure automation name and email
+          git config user.name "[bot] CI Tagbot"
+          git config user.email "nobody@churroscastle.com"
+
+          # Calculate the next cd label
+          # Find all tags starting with 'cd', remove the 'cd' prefix, sort numerically, and grab the highest number
+          HIGHEST_CD=$(git tag -l "cd*" | sed 's/^cd//' | sort -n | tail -1)
+
+          # If no 'cd' tags exist yet, start at 1. Otherwise, increment the highest number.
+          if [ -z "$HIGHEST_CD" ]; then
+            NEXT_CD=1
+          else
+            NEXT_CD=$((HIGHEST_CD + 1))
+          fi
+
+          NEW_TAG="cd${NEXT_CD}"
+          echo "Next cdlabel: ${NEW_TAG}"
+
+          # Create the new cd tag
+          git tag $NEW_TAG
+
+          # Create or update the floating 'latest_passed' tag
+          git tag -f latest_passed
+
+          # Push the tags
+          git push origin $NEW_TAG
+          git push -f origin latest_passed

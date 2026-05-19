@@ -1,0 +1,2 @@
+# Packages required for robot framework integration testing
+robotframework==7.2.2
