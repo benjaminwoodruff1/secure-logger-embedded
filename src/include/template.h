@@ -1,22 +1,22 @@
-// template.h
-// Example header file that defines symbols that go in a library later
+#ifndef TEMPLATE_H
+#define TEMPLATE_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _template {
-    // Data members
-    int a;
-    int b;
-} template_t;
+// Define the function signature for loggers 
+typedef void (*LogFunc)(const char* message);
 
-// Calculates a + b of a template struct
-int template_sum(template_t t);
+// Declare global function pointer as an 'extern' variable.
+extern LogFunc log_info;
 
-// Calculates a / b of a stemplate struct
-int template_divide(template_t t);
+// Declarations to change states at runtime
+void enable_logging();
+void disable_logging();
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
