@@ -1,22 +1,21 @@
-#include <cstdlib>
+#include <stdio.h>
 #include <cstring>
+#include <stdbool.h>
 #include <iostream>
 #include "template.h"
 #include "template_config.h"
 
 void high_frequency_loop() {
     for (int i = 0; i < 3; ++i) {
-        log_info("Telemetry check...");
+        log_info_inline("Telemetry check...");
     }
 }
 
 int main(int argc, char** argv) {
-    std::cout << "Hello, world!" << std::endl;
-    std::cout << "Version: " << TEMPLATE_VERSION_MAJOR << "."
-              << TEMPLATE_VERSION_MINOR << "." << TEMPLATE_VERSION_PATCH
-              << std::endl;
+    printf("Hello, world!\n");
+    printf("Version: %d.%d.%d\n", TEMPLATE_VERSION_MAJOR, TEMPLATE_VERSION_MINOR, TEMPLATE_VERSION_PATCH);
     
-    std::cout << "--- Project ---\n" << std::endl;
+    printf("--- Project ---\n");
 
     // Test default state
     high_frequency_loop();

@@ -6,16 +6,16 @@ TEST(LoggerIntegrationTest, FullSystemLifecycleSimulation) {
     disable_logging();
     for (int i = 0; i < 5; ++i)
     {
-        log_info("System boot diagnostics (Should be silent)...");
+        log_info_inline("System boot diagnostics (Should be silent)...");
     }
 
     enable_logging();
-    log_info("--> ALERT: Hardware interrupt detected. Logging active.");
-    log_info("--> Telemetry dump: System stable.");
+    log_info_inline("--> ALERT: Hardware interrupt detected. Logging active.");
+    log_info_inline("--> Telemetry dump: System stable.");
 
     disable_logging();
     for (int i = 0; i < 5; ++i) {
-        log_info("Steady-state loop (Should be silent)...");
+        log_info_inline("Steady-state loop (Should be silent)...");
     }
 
     SUCCEED();
@@ -29,9 +29,9 @@ TEST(LoggerIntegrationTest, RapidPointerSwappingStressTest) {
     
     for (int i = 0; i < 1000; ++i) {
         enable_logging();
-        log_info("Stress testing stream...");
+        log_info_inline("Stress testing stream...");
         disable_logging();
-        log_info("Stress testing silence...");
+        log_info_inline("Stress testing silence...");
     }
 
     std::cout.rdbuf(original_cout);

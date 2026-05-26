@@ -4,38 +4,44 @@
 #include <iostream>
 #include <sstream>
 #include "template.h"
+#include <stdio.h>
+#include <fstream>
+#include <unistd.h>
 
 class LoggerUnitTest : public ::testing::Test {
 protected:
-    std::streambuf* original_cout;
-    std::stringstream test_output;
-
     void SetUp() override {
-        original_cout = std::cout.rdbuf(test_output.rdbuf());
         disable_logging();
-    }
+        testing::internal::CaptureStdout();
+        }
 
     void TearDown() override {
-        std::cout.rdbuf(original_cout);
+        (void)testing::internal::GetCapturedStdout();
+    }
+
+    std::string GetCapturedOutput() {
+        std::string output = testing::internal::GetCapturedStdout();
+        testing::internal::CaptureStdout();
+        return output;
     }
 };
 
 TEST_F(LoggerUnitTest, DefaultSateIsSilent) {
-    log_info("Should be silent");
-    EXPECT_EQ(test_output.str(), "");
+    log_info_inline("Should be silent");
+    EXPECT_EQ(GetCapturedOutput(), "");
 }
 
 TEST_F(LoggerUnitTest, EnableLoggingOutputsMessages) {
     enable_logging();
-    log_info("Testing Enable");
-    EXPECT_EQ(test_output.str(), "[Log]: Testing Enable\n");
+    log_info_inline("Testing Enable");
+    EXPECT_EQ(GetCapturedOutput(), "[Log]: Testing Enable\n");
 }
 
 TEST_F(LoggerUnitTest, DisableLoggingReturnsToSilent) {
     enable_logging();
     disable_logging();
-    log_info("This should be silent");
-    EXPECT_EQ(test_output.str(), "");
+    log_info_inline("This should be silent");
+    EXPECT_EQ(GetCapturedOutput(), "");
 }
 
 int main (int argc, char** argv) {
